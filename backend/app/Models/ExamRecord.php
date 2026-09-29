@@ -16,6 +16,11 @@ class ExamRecord extends Model
         'end_time',
         'score',
         'status',
+        'scratch_waiver_status',
+        'scratch_waiver_reason',
+        'scratch_waiver_by',
+        'scratch_waiver_at',
+        'scratch_waiver_note',
     ];
 
     protected $casts = [
@@ -25,6 +30,9 @@ class ExamRecord extends Model
         'end_time' => 'datetime',
         'score' => 'decimal:2',
         'status' => 'string',
+        'scratch_waiver_status' => 'string',
+        'scratch_waiver_by' => 'integer',
+        'scratch_waiver_at' => 'datetime',
     ];
 
     public const STATUS_IN_PROGRESS = 'in_progress';
@@ -35,6 +43,18 @@ class ExamRecord extends Model
         self::STATUS_IN_PROGRESS => '进行中',
         self::STATUS_SUBMITTED => '已提交',
         self::STATUS_GRADED => '已评分',
+    ];
+
+    public const WAIVER_NONE = 'none';
+    public const WAIVER_PENDING = 'pending';
+    public const WAIVER_APPROVED = 'approved';
+    public const WAIVER_REJECTED = 'rejected';
+
+    public const WAIVER_STATUSES = [
+        self::WAIVER_NONE => '未申请',
+        self::WAIVER_PENDING => '待老师处理',
+        self::WAIVER_APPROVED => '老师已批准',
+        self::WAIVER_REJECTED => '老师已拒绝',
     ];
 
     public function user()
@@ -50,5 +70,17 @@ class ExamRecord extends Model
     public function answers()
     {
         return $this->hasMany(ExamRecordAnswer::class, 'exam_record_id');
+    }
+
+    public function scratchPaperPhotos()
+    {
+        return $this->hasMany(ScratchPaperPhoto::class, 'exam_record_id')
+            ->orderBy('elapsed_seconds')
+            ->orderBy('id');
+    }
+
+    public function waiverHandler()
+    {
+        return $this->belongsTo(User::class, 'scratch_waiver_by');
     }
 }

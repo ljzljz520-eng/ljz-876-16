@@ -151,6 +151,7 @@ services:
               total_time INT DEFAULT 60 COMMENT '考试时长(分钟)',
               question_count INT NOT NULL COMMENT '题目数量',
               type ENUM('fixed', 'random') DEFAULT 'fixed' COMMENT '出题方式: fixed-固定 random-随机',
+              scratch_paper_required TINYINT(1) DEFAULT 0 COMMENT '是否要求草稿纸拍照留存: 1-是 0-否',
               status TINYINT(1) DEFAULT 1 COMMENT '状态: 1-启用 0-禁用',
               created_by BIGINT UNSIGNED COMMENT '创建人ID',
               created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
@@ -194,11 +195,17 @@ services:
               end_time TIMESTAMP NULL COMMENT '提交时间',
               score DECIMAL(5,2) DEFAULT 0.00 COMMENT '得分',
               status ENUM('in_progress', 'submitted', 'graded') DEFAULT 'in_progress' COMMENT '状态',
+              scratch_waiver_status ENUM('none', 'pending', 'approved', 'rejected') DEFAULT 'none' COMMENT '草稿纸免拍处理: none-未申请 pending-待老师处理 approved-老师批准 rejected-已拒绝',
+              scratch_waiver_reason TEXT COMMENT '学生申请原因',
+              scratch_waiver_by BIGINT UNSIGNED COMMENT '处理老师ID',
+              scratch_waiver_at TIMESTAMP NULL COMMENT '老师处理时间',
+              scratch_waiver_note TEXT COMMENT '老师处理备注',
               created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
               updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
               INDEX idx_user_id (user_id),
               INDEX idx_exam_paper_id (exam_paper_id),
-              INDEX idx_status (status)
+              INDEX idx_status (status),
+              INDEX idx_scratch_waiver_status (scratch_waiver_status)
           ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci COMMENT='考试记录表';
 
           CREATE TABLE IF NOT EXISTS exam_record_answers (
@@ -208,11 +215,30 @@ services:
               answer TEXT NOT NULL COMMENT '考生答案',
               is_correct TINYINT(1) DEFAULT 0 COMMENT '是否正确: 1-正确 0-错误',
               score DECIMAL(5,2) DEFAULT 0.00 COMMENT '得分',
+              answered_at TIMESTAMP NULL COMMENT '作答时间(提交时落库)',
               created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
               updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
               INDEX idx_exam_record_id (exam_record_id),
               INDEX idx_question_id (question_id)
           ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci COMMENT='考生答案表';
+
+          CREATE TABLE IF NOT EXISTS scratch_paper_photos (
+              id BIGINT UNSIGNED AUTO_INCREMENT PRIMARY KEY,
+              exam_record_id BIGINT UNSIGNED NOT NULL COMMENT '考试记录ID',
+              user_id BIGINT UNSIGNED NOT NULL COMMENT '拍摄学生ID',
+              phase ENUM('pre', 'final') NOT NULL COMMENT '拍摄阶段: pre-开考前空白纸 final-交卷前最终页',
+              file_path VARCHAR(255) NOT NULL COMMENT '存储相对路径',
+              original_name VARCHAR(255) COMMENT '原始文件名',
+              file_size BIGINT UNSIGNED DEFAULT 0 COMMENT '文件大小(字节)',
+              mime_type VARCHAR(50) COMMENT 'MIME类型',
+              elapsed_seconds INT UNSIGNED DEFAULT 0 COMMENT '相对开考已用时(秒)，用于回放对齐答题时间',
+              client_captured_at VARCHAR(30) COMMENT '前端设备拍摄时间(ISO字符串)',
+              created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+              updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+              INDEX idx_exam_record_id (exam_record_id),
+              INDEX idx_user_id (user_id),
+              INDEX idx_record_phase (exam_record_id, phase)
+          ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci COMMENT='草稿纸拍照留存表';
 
           CREATE TABLE IF NOT EXISTS cache (
               `key` VARCHAR(255) NOT NULL PRIMARY KEY,
@@ -266,6 +292,19 @@ services:
       - exam-network
     ports:
       - "9000:8080"
+    entrypoint:
+      - sh
+      - -c
+      - |
+          set -e
+          for i in $$(seq 1 60); do
+            if php artisan db:show >/dev/null 2>&1; then
+              break
+            fi
+            sleep 2
+          done
+          php artisan migrate --force
+          exec php artisan serve --host=0.0.0.0 --port=8080
 
   frontend:
     build:

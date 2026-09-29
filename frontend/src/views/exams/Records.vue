@@ -14,7 +14,9 @@
             <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">试卷</th>
             <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">得分</th>
             <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">状态</th>
+            <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">草稿纸留存</th>
             <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">考试时间</th>
+            <th class="px-6 py-3"></th>
           </tr>
         </thead>
         <tbody class="bg-white divide-y divide-gray-200">
@@ -26,7 +28,21 @@
                 {{ record.status === 'graded' ? '已评分' : record.status }}
               </span>
             </td>
+            <td class="px-6 py-4 whitespace-nowrap text-sm">
+              <span v-if="record.exam_paper?.scratch_paper_required" class="inline-flex items-center text-amber-700">
+                <svg class="w-4 h-4 mr-1" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2" /></svg>
+                {{ scratchSummary(record) }}
+              </span>
+              <span v-else class="text-gray-300">—</span>
+            </td>
             <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-500">{{ new Date(record.created_at).toLocaleString() }}</td>
+            <td class="px-6 py-4 whitespace-nowrap text-right">
+              <router-link
+                v-if="record.exam_paper?.scratch_paper_required"
+                :to="{ name: 'MyScratchTimeline', params: { paperId: record.exam_paper_id, recordId: record.id } }"
+                class="text-indigo-600 hover:text-indigo-900 text-sm font-medium"
+              >查看留存</router-link>
+            </td>
           </tr>
         </tbody>
       </table>
@@ -51,4 +67,12 @@ onMounted(async () => {
     loading.value = false
   }
 })
+
+const scratchSummary = (record) => {
+  const waiver = record.scratch_waiver_status
+  if (waiver === 'pending') return '待老师处理'
+  if (waiver === 'approved') return '老师批准特殊处理'
+  if (waiver === 'rejected') return '申请被驳回'
+  return record.status === 'in_progress' ? '考试进行中' : '已拍照留存'
+}
 </script>

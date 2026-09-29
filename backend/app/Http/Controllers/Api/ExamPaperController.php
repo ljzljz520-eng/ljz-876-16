@@ -40,6 +40,7 @@ class ExamPaperController extends Controller
             'description' => 'nullable|string',
             'total_time' => 'nullable|integer|min:1',
             'type' => 'nullable|in:fixed,random',
+            'scratch_paper_required' => 'nullable|boolean',
         ]);
 
         if ($validator->fails()) {
@@ -53,6 +54,7 @@ class ExamPaperController extends Controller
             'total_time' => $request->total_time ?? 60,
             'question_count' => 0,
             'type' => $request->type ?? 'fixed',
+            'scratch_paper_required' => $request->boolean('scratch_paper_required'),
             'created_by' => $request->user()->id,
             'status' => 1,
         ]);
@@ -90,10 +92,18 @@ class ExamPaperController extends Controller
             'total_time' => 'nullable|integer|min:1',
             'type' => 'nullable|in:fixed,random',
             'status' => 'nullable|boolean',
+            'scratch_paper_required' => 'nullable|boolean',
         ]);
 
         if ($validator->fails()) {
             return response()->json(['errors' => $validator->errors()], 422);
+        }
+
+        // 有学生正在考试时，不能变更草稿纸拍照要求，避免考生被新规则卡住
+        $wantsChangeSetting = $request->exists('scratch_paper_required')
+            && (bool) $request->boolean('scratch_paper_required') !== (bool) $examPaper->scratch_paper_required;
+        if ($wantsChangeSetting && $examPaper->examRecords()->where('status', 'in_progress')->exists()) {
+            return response()->json(['message' => '当前有学生正在考试，不能修改草稿纸拍照要求'], 422);
         }
 
         $examPaper->update([
@@ -101,6 +111,7 @@ class ExamPaperController extends Controller
             'description' => $request->description,
             'total_time' => $request->total_time,
             'type' => $request->type,
+            'scratch_paper_required' => $request->boolean('scratch_paper_required', $examPaper->scratch_paper_required),
             'status' => $request->status ?? $examPaper->status,
         ]);
 

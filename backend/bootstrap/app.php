@@ -22,7 +22,8 @@ return Application::configure(basePath: dirname(__DIR__))
         ]);
         
         $middleware->alias([
-            // Add any custom middleware aliases here
+            // 草稿纸照片 <img> 访问时允许 ?token= 鉴权
+            'scratch.photo.auth' => \App\Http\Middleware\ScratchPhotoTokenAuthenticate::class,
         ]);
     })
     ->withExceptions(function (Exceptions $exceptions): void {

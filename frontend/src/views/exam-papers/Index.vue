@@ -20,6 +20,7 @@
             <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">题目数</th>
             <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">总分</th>
             <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">时长</th>
+            <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">草稿纸</th>
             <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">操作</th>
           </tr>
         </thead>
@@ -30,6 +31,10 @@
             <td class="px-6 py-4">{{ paper.question_count }} 题</td>
             <td class="px-6 py-4">{{ paper.total_score }} 分</td>
             <td class="px-6 py-4">{{ paper.total_time }} 分钟</td>
+            <td class="px-6 py-4">
+              <span v-if="paper.scratch_paper_required" class="inline-flex items-center text-xs font-semibold text-amber-800 bg-amber-100 px-2 py-1 rounded-full">需拍照留存</span>
+              <span v-else class="text-xs text-gray-400">不涉及</span>
+            </td>
             <td class="px-6 py-4 space-x-2">
               <button @click="openQuestionModal(paper)" class="text-green-600 hover:text-green-900">管理题目</button>
               <button @click="openEditModal(paper)" class="text-indigo-600 hover:text-indigo-900">编辑</button>
@@ -71,6 +76,13 @@
                     </select>
                   </div>
                 </div>
+                <label class="flex items-start p-3 border border-amber-200 bg-amber-50 rounded cursor-pointer">
+                  <input v-model="form.scratch_paper_required" type="checkbox" class="h-4 w-4 mt-0.5 text-amber-600 border-gray-300 rounded focus:ring-amber-500">
+                  <span class="ml-3">
+                    <span class="block text-sm font-medium text-gray-800">允许使用纸质草稿并拍照留存（数学 / 会计 / 编程等科目）</span>
+                    <span class="block text-xs text-gray-500 mt-0.5">勾选后，学生开考前必须拍摄空白草稿纸、交卷前必须拍摄最终页面；漏拍需申请监考老师处理，否则不能交卷。</span>
+                  </span>
+                </label>
               </div>
             </div>
             <div class="px-6 py-4 border-t flex justify-end space-x-3">
@@ -197,7 +209,8 @@ const defaultForm = {
   title: '',
   description: '',
   total_time: 60,
-  type: 'fixed'
+  type: 'fixed',
+  scratch_paper_required: false
 }
 
 const form = ref({ ...defaultForm })
@@ -286,7 +299,8 @@ const openEditModal = (paper) => {
     title: paper.title,
     description: paper.description || '',
     total_time: paper.total_time,
-    type: paper.type
+    type: paper.type,
+    scratch_paper_required: !!paper.scratch_paper_required
   }
   showModal.value = true
 }

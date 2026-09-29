@@ -16,6 +16,7 @@ class ExamPaper extends Model
         'total_time',
         'question_count',
         'type',
+        'scratch_paper_required',
         'created_by',
         'status',
     ];
@@ -25,6 +26,7 @@ class ExamPaper extends Model
         'total_time' => 'integer',
         'question_count' => 'integer',
         'type' => 'string',
+        'scratch_paper_required' => 'boolean',
         'created_by' => 'integer',
         'status' => 'boolean',
     ];
@@ -52,6 +54,18 @@ class ExamPaper extends Model
     public function examRecords()
     {
         return $this->hasMany(ExamRecord::class, 'exam_paper_id');
+    }
+
+    public function scratchPaperPhotos()
+    {
+        return $this->hasManyThrough(
+            ScratchPaperPhoto::class,
+            ExamRecord::class,
+            'exam_paper_id',
+            'exam_record_id',
+            'id',
+            'id'
+        );
     }
 
     public function updateQuestionCountAndScore()

@@ -7,11 +7,18 @@ use App\Models\ExamPaper;
 use App\Models\ExamRecord;
 use App\Models\ExamRecordAnswer;
 use App\Models\Question;
+use App\Support\ScratchPaperGuard;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Validator;
 
 class ExamController extends Controller
 {
+    protected ScratchPaperGuard $scratchGuard;
+
+    public function __construct(ScratchPaperGuard $scratchGuard)
+    {
+        $this->scratchGuard = $scratchGuard;
+    }
     public function index(Request $request)
     {
         $examPapers = ExamPaper::with('creator')
@@ -32,9 +39,28 @@ class ExamController extends Controller
             ->first();
 
         if ($existingRecord) {
+            $existingState = $this->scratchGuard->state($existingRecord, $examPaper);
+
             return response()->json([
                 'message' => '您已经开始这场考试',
                 'exam_record' => $existingRecord,
+                'exam_paper' => [
+                    'id' => $examPaper->id,
+                    'title' => $examPaper->title,
+                    'total_time' => $examPaper->total_time,
+                    'total_score' => $examPaper->total_score,
+                    'scratch_paper_required' => (bool) $examPaper->scratch_paper_required,
+                ],
+                'scratch' => $existingState,
+                'questions' => $existingState['can_answer']
+                    ? $examPaper->questions()->get()->map(fn ($q) => [
+                        'id' => $q->id,
+                        'type' => $q->type,
+                        'title' => $q->title,
+                        'options' => $q->options,
+                        'score' => $q->pivot->score,
+                    ])->values()
+                    : [],
             ]);
         }
 
@@ -57,6 +83,8 @@ class ExamController extends Controller
             ];
         });
 
+        $scratchState = $this->scratchGuard->state($record, $examPaper);
+
         return response()->json([
             'message' => '考试开始',
             'exam_record' => $record,
@@ -65,8 +93,11 @@ class ExamController extends Controller
                 'title' => $examPaper->title,
                 'total_time' => $examPaper->total_time,
                 'total_score' => $examPaper->total_score,
+                'scratch_paper_required' => (bool) $examPaper->scratch_paper_required,
             ],
-            'questions' => $questionsData,
+            'scratch' => $scratchState,
+            // 空白草稿纸照片未留存前不下发题目
+            'questions' => $scratchState['can_answer'] ? $questionsData : [],
         ]);
     }
 
@@ -77,17 +108,24 @@ class ExamController extends Controller
             ->where('status', 'in_progress')
             ->firstOrFail();
 
-        $questions = $examPaper->questions()->get();
+        $scratchState = $this->scratchGuard->state($record, $examPaper);
 
-        $questionsData = $questions->map(function ($q) {
-            return [
-                'id' => $q->id,
-                'type' => $q->type,
-                'title' => $q->title,
-                'options' => $q->options,
-                'score' => $q->pivot->score,
-            ];
-        });
+        $questionsData = [];
+
+        // 开考前必须先拍空白草稿纸（或经老师批准），否则不返回题目
+        if ($scratchState['can_answer']) {
+            $questions = $examPaper->questions()->get();
+
+            $questionsData = $questions->map(function ($q) {
+                return [
+                    'id' => $q->id,
+                    'type' => $q->type,
+                    'title' => $q->title,
+                    'options' => $q->options,
+                    'score' => $q->pivot->score,
+                ];
+            });
+        }
 
         return response()->json([
             'exam_record' => $record,
@@ -96,7 +134,9 @@ class ExamController extends Controller
                 'title' => $examPaper->title,
                 'total_time' => $examPaper->total_time,
                 'total_score' => $examPaper->total_score,
+                'scratch_paper_required' => (bool) $examPaper->scratch_paper_required,
             ],
+            'scratch' => $scratchState,
             'questions' => $questionsData,
         ]);
     }
@@ -105,9 +145,9 @@ class ExamController extends Controller
     {
         $validator = Validator::make($request->all(), [
             'exam_record_id' => 'required|exists:exam_records,id',
-            'answers' => 'required|array',
+            'answers' => 'present|array',
             'answers.*.question_id' => 'required|exists:questions,id',
-            'answers.*.answer' => 'required|string',
+            'answers.*.answer' => 'present|string',
         ]);
 
         if ($validator->fails()) {
@@ -120,6 +160,19 @@ class ExamController extends Controller
             ->where('status', 'in_progress')
             ->firstOrFail();
 
+        // 草稿纸拍照留存闸门：交卷前必须有最终页照片（两阶段齐全），或经老师批准
+        if (!$this->scratchGuard->canSubmit($record, $examPaper)) {
+            $state = $this->scratchGuard->state($record, $examPaper);
+            return response()->json([
+                'message' => $state['waiver_status'] === 'pending'
+                    ? '草稿纸照片不完整，已提交监考老师处理，请等待老师批准后再交卷'
+                    : '请先完成草稿纸拍照（空白纸与最终页面）后再交卷，或申请交给老师处理',
+                'error_code' => 'SCRATCH_PAPER_INCOMPLETE',
+                'scratch' => $state,
+            ], 422);
+        }
+
+        $submitTime = now();
         $totalScore = 0;
         $questionMap = $examPaper->questions->keyBy('id');
 
@@ -138,13 +191,14 @@ class ExamController extends Controller
                 'answer' => $answerData['answer'],
                 'is_correct' => $isCorrect,
                 'score' => $score,
+                'answered_at' => $submitTime,
             ]);
 
             $totalScore += $score;
         }
 
         $record->update([
-            'end_time' => now(),
+            'end_time' => $submitTime,
             'score' => $totalScore,
             'status' => 'graded',
         ]);
@@ -170,11 +224,14 @@ class ExamController extends Controller
 
     public function showRecord(Request $request, ExamRecord $record)
     {
-        if ($record->user_id !== $request->user()->id) {
+        $user = $request->user();
+        $isStaff = in_array($user->role, ['admin', 'teacher'], true);
+
+        if ($record->user_id !== $user->id && !$isStaff) {
             return response()->json(['message' => '无权查看此记录'], 403);
         }
 
-        $record->load(['examPaper.questions', 'answers.question']);
+        $record->load(['examPaper.questions', 'answers.question', 'scratchPaperPhotos', 'user', 'waiverHandler:id,username,real_name']);
 
         return response()->json([
             'record' => $record,

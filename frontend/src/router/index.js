@@ -39,6 +39,24 @@ const routes = [
     meta: { requiresAuth: true }
   },
   {
+    path: '/proctor/reviews',
+    name: 'ProctorReviews',
+    component: () => import('../views/proctor/Reviews.vue'),
+    meta: { requiresAuth: true, roles: ['admin', 'teacher'] }
+  },
+  {
+    path: '/proctor/exams/:paperId/records/:recordId/timeline',
+    name: 'ProctorTimeline',
+    component: () => import('../views/proctor/Timeline.vue'),
+    meta: { requiresAuth: true, roles: ['admin', 'teacher'] }
+  },
+  {
+    path: '/my/exams/:paperId/records/:recordId/timeline',
+    name: 'MyScratchTimeline',
+    component: () => import('../views/proctor/Timeline.vue'),
+    meta: { requiresAuth: true }
+  },
+  {
     path: '/questions',
     name: 'Questions',
     component: () => import('../views/questions/Index.vue'),

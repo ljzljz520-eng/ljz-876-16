@@ -5,6 +5,7 @@ use App\Http\Controllers\Api\ExamController;
 use App\Http\Controllers\Api\ExamPaperController;
 use App\Http\Controllers\Api\QuestionController;
 use App\Http\Controllers\Api\ScoreController;
+use App\Http\Controllers\Api\ScratchPaperController;
 use Illuminate\Support\Facades\Route;
 
 Route::middleware('api')->prefix('auth')->group(function () {
@@ -45,6 +46,18 @@ Route::middleware(['api', 'auth:sanctum', 'throttle:60,1'])->group(function () {
         Route::post('/{examPaper}/submit', [ExamController::class, 'submit']);
         Route::get('/records', [ExamController::class, 'myRecords']);
         Route::get('/records/{record}', [ExamController::class, 'showRecord']);
+
+        // 草稿纸拍照留存
+        Route::get('/{examPaper}/scratch/status', [ScratchPaperController::class, 'status']);
+        Route::post('/{examPaper}/scratch/upload', [ScratchPaperController::class, 'upload']);
+        Route::post('/{examPaper}/scratch/waiver', [ScratchPaperController::class, 'requestWaiver']);
+        Route::get('/{examPaper}/records/{record}/timeline', [ScratchPaperController::class, 'timeline']);
+    });
+
+    // 监考复核（教师/管理员）
+    Route::prefix('scratch-papers')->group(function () {
+        Route::get('/reviews', [ScratchPaperController::class, 'reviewList']);
+        Route::post('/records/{record}/review', [ScratchPaperController::class, 'reviewWaiver']);
     });
 
     Route::prefix('scores')->group(function () {
@@ -53,3 +66,7 @@ Route::middleware(['api', 'auth:sanctum', 'throttle:60,1'])->group(function () {
         Route::get('/analysis/{examPaper}', [ScoreController::class, 'analysis']);
     });
 });
+
+// 草稿纸照片下载：需登录，支持 Authorization 头或 <img src="?token="> 两种方式
+Route::middleware(['api', 'scratch.photo.auth', 'throttle:120,1'])
+    ->get('/scratch-papers/photos/{photo}', [ScratchPaperController::class, 'download']);

@@ -11,7 +11,13 @@
     </div>
     <div v-else class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
       <div v-for="paper in examPapers" :key="paper.id" class="bg-white rounded-lg shadow p-6">
-        <h3 class="text-lg font-semibold text-gray-900 mb-2">{{ paper.title }}</h3>
+        <div class="flex items-start justify-between mb-2">
+          <h3 class="text-lg font-semibold text-gray-900">{{ paper.title }}</h3>
+          <span v-if="paper.scratch_paper_required" class="flex-shrink-0 ml-2 inline-flex items-center text-xs font-semibold text-amber-800 bg-amber-100 px-2 py-1 rounded-full" title="本场考试允许使用纸质草稿，开考前与交卷前需拍照留存">
+            <svg class="w-3.5 h-3.5 mr-1" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2m-6 9l2 2 4-4" /></svg>
+            需草稿纸拍照
+          </span>
+        </div>
         <p class="text-gray-600 text-sm mb-4">{{ paper.description || '暂无描述' }}</p>
         <div class="space-y-2 text-sm text-gray-500">
           <div class="flex justify-between">
