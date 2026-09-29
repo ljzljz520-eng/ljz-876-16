@@ -14,17 +14,31 @@
             <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">试卷</th>
             <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">得分</th>
             <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">状态</th>
+            <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">草稿纸照片</th>
             <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">考试时间</th>
           </tr>
         </thead>
         <tbody class="bg-white divide-y divide-gray-200">
           <tr v-for="record in records" :key="record.id">
             <td class="px-6 py-4 whitespace-nowrap">{{ record.exam_paper?.title }}</td>
-            <td class="px-6 py-4 whitespace-nowrap font-bold" :class="{'text-green-600': record.score >= 60, 'text-red-600': record.score < 60}">{{ record.score }} 分</td>
+            <td class="px-6 py-4 whitespace-nowrap font-bold" :class="{'text-green-600': record.score >= 60, 'text-red-600': record.score < 60}">
+              {{ record.status === 'graded' ? record.score + ' 分' : '—' }}
+            </td>
             <td class="px-6 py-4 whitespace-nowrap">
-              <span class="px-2 inline-flex text-xs leading-5 font-semibold rounded-full bg-green-100 text-green-800">
-                {{ record.status === 'graded' ? '已评分' : record.status }}
+              <span class="px-2 inline-flex text-xs leading-5 font-semibold rounded-full" :class="statusClass(record)">
+                {{ statusLabel(record) }}
               </span>
+            </td>
+            <td class="px-6 py-4 whitespace-nowrap text-xs text-gray-500">
+              <template v-if="record.exam_paper?.allow_scratch_paper || (record.scratch_photos && record.scratch_photos.length)">
+                <span :class="photoCount(record) === 2 ? 'text-green-600' : 'text-amber-600'">
+                  {{ photoCount(record) }}/2 张
+                </span>
+                <span v-if="record.scratch_exception_status === 'pending'" class="block text-amber-600">等待老师处理</span>
+                <span v-else-if="record.scratch_exception_status === 'approved'" class="block text-blue-600">教师已放行</span>
+                <span v-else-if="record.scratch_exception_status === 'rejected'" class="block text-red-600">已驳回，请补拍</span>
+              </template>
+              <span v-else class="text-gray-400">本场无需草稿纸</span>
             </td>
             <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-500">{{ new Date(record.created_at).toLocaleString() }}</td>
           </tr>
@@ -51,4 +65,22 @@ onMounted(async () => {
     loading.value = false
   }
 })
+
+const statusLabel = (record) => {
+  if (record.status === 'graded') return '已评分'
+  if (record.status === 'scratch_pending') {
+    if (record.scratch_exception_status === 'pending') return '草稿异常待处理'
+    if (record.scratch_exception_status === 'approved') return '教师已放行'
+    if (record.scratch_exception_status === 'rejected') return '需补拍后重交'
+  }
+  return record.status
+}
+
+const statusClass = (record) => {
+  if (record.status === 'graded') return 'bg-green-100 text-green-800'
+  if (record.status === 'scratch_pending') return 'bg-amber-100 text-amber-800'
+  return 'bg-gray-100 text-gray-800'
+}
+
+const photoCount = (record) => (record.scratch_photos || []).length
 </script>

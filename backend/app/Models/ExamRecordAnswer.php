@@ -13,6 +13,7 @@ class ExamRecordAnswer extends Model
         'exam_record_id',
         'question_id',
         'answer',
+        'answered_at',
         'is_correct',
         'score',
     ];
@@ -20,6 +21,7 @@ class ExamRecordAnswer extends Model
     protected $casts = [
         'exam_record_id' => 'integer',
         'question_id' => 'integer',
+        'answered_at' => 'datetime',
         'is_correct' => 'boolean',
         'score' => 'decimal:2',
     ];

@@ -158,4 +158,30 @@ class ScoreController extends Controller
             ],
         ]);
     }
+
+    /**
+     * 监考用：考试记录列表（可只筛需要草稿纸的考试）
+     */
+    public function scratchRecords(Request $request)
+    {
+        $user = $request->user();
+        if (!$user->isAdmin() && !$user->isTeacher()) {
+            return response()->json(['message' => '无权访问'], 403);
+        }
+
+        $query = ExamRecord::with(['user:id,username,real_name', 'examPaper', 'scratchPhotos'])
+            ->orderByDesc('id');
+
+        if ($request->boolean('only_scratch')) {
+            $query->whereHas('examPaper', fn ($q) => $q->where('allow_scratch_paper', 1));
+        }
+
+        if ($user->isTeacher()) {
+            $query->whereHas('examPaper', fn ($q) => $q->where('created_by', $user->id));
+        }
+
+        return response()->json([
+            'records' => $query->paginate($request->input('per_page', 20)),
+        ]);
+    }
 }

@@ -51,6 +51,12 @@ const routes = [
     meta: { requiresAuth: true, roles: ['admin', 'teacher'] }
   },
   {
+    path: '/proctor/scratch',
+    name: 'ScratchMonitor',
+    component: () => import('../views/proctor/ScratchMonitor.vue'),
+    meta: { requiresAuth: true, roles: ['admin', 'teacher'] }
+  },
+  {
     path: '/statistics',
     name: 'Statistics',
     component: () => import('../views/statistics/Index.vue'),

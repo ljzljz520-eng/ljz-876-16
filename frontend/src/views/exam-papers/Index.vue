@@ -26,7 +26,14 @@
         <tbody class="bg-white divide-y divide-gray-200">
           <tr v-for="paper in examPapers" :key="paper.id" class="hover:bg-gray-50">
             <td class="px-6 py-4">{{ paper.id }}</td>
-            <td class="px-6 py-4">{{ paper.title }}</td>
+            <td class="px-6 py-4">
+              {{ paper.title }}
+              <span
+                v-if="paper.allow_scratch_paper"
+                class="ml-2 inline-flex items-center px-2 py-0.5 rounded text-xs font-medium bg-amber-100 text-amber-800"
+                title="允许纸质草稿纸，开考前/交卷前需拍照留存"
+              >草稿拍照</span>
+            </td>
             <td class="px-6 py-4">{{ paper.question_count }} 题</td>
             <td class="px-6 py-4">{{ paper.total_score }} 分</td>
             <td class="px-6 py-4">{{ paper.total_time }} 分钟</td>
@@ -71,6 +78,19 @@
                     </select>
                   </div>
                 </div>
+                <label class="flex items-start gap-3 p-3 rounded-lg border border-amber-200 bg-amber-50 cursor-pointer">
+                  <input
+                    v-model="form.allow_scratch_paper"
+                    type="checkbox"
+                    class="mt-0.5 h-4 w-4 text-amber-600 border-gray-300 rounded focus:ring-amber-500"
+                  />
+                  <span class="flex-1">
+                    <span class="block text-sm font-medium text-gray-800">允许使用纸质草稿纸（拍照留存）</span>
+                    <span class="block text-xs text-gray-500 mt-0.5">
+                      适用于数学、会计、编程等笔试。开启后学生须在开考前拍空白页、交卷前拍最终页，漏拍不能直接交卷。
+                    </span>
+                  </span>
+                </label>
               </div>
             </div>
             <div class="px-6 py-4 border-t flex justify-end space-x-3">
@@ -197,7 +217,8 @@ const defaultForm = {
   title: '',
   description: '',
   total_time: 60,
-  type: 'fixed'
+  type: 'fixed',
+  allow_scratch_paper: false
 }
 
 const form = ref({ ...defaultForm })
@@ -286,7 +307,8 @@ const openEditModal = (paper) => {
     title: paper.title,
     description: paper.description || '',
     total_time: paper.total_time,
-    type: paper.type
+    type: paper.type,
+    allow_scratch_paper: !!paper.allow_scratch_paper
   }
   showModal.value = true
 }

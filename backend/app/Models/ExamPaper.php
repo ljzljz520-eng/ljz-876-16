@@ -16,6 +16,7 @@ class ExamPaper extends Model
         'total_time',
         'question_count',
         'type',
+        'allow_scratch_paper',
         'created_by',
         'status',
     ];
@@ -25,6 +26,7 @@ class ExamPaper extends Model
         'total_time' => 'integer',
         'question_count' => 'integer',
         'type' => 'string',
+        'allow_scratch_paper' => 'boolean',
         'created_by' => 'integer',
         'status' => 'boolean',
     ];

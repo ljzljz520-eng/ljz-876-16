@@ -40,6 +40,7 @@ class ExamPaperController extends Controller
             'description' => 'nullable|string',
             'total_time' => 'nullable|integer|min:1',
             'type' => 'nullable|in:fixed,random',
+            'allow_scratch_paper' => 'nullable|boolean',
         ]);
 
         if ($validator->fails()) {
@@ -53,6 +54,7 @@ class ExamPaperController extends Controller
             'total_time' => $request->total_time ?? 60,
             'question_count' => 0,
             'type' => $request->type ?? 'fixed',
+            'allow_scratch_paper' => $request->boolean('allow_scratch_paper'),
             'created_by' => $request->user()->id,
             'status' => 1,
         ]);
@@ -90,6 +92,7 @@ class ExamPaperController extends Controller
             'total_time' => 'nullable|integer|min:1',
             'type' => 'nullable|in:fixed,random',
             'status' => 'nullable|boolean',
+            'allow_scratch_paper' => 'nullable|boolean',
         ]);
 
         if ($validator->fails()) {
@@ -101,6 +104,7 @@ class ExamPaperController extends Controller
             'description' => $request->description,
             'total_time' => $request->total_time,
             'type' => $request->type,
+            'allow_scratch_paper' => $request->boolean('allow_scratch_paper'),
             'status' => $request->status ?? $examPaper->status,
         ]);
 

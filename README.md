@@ -88,6 +88,33 @@ node scripts/verify-readme-test-credentials.mjs --manifest qa/.runtime/test-cred
 3. 试卷管理：试卷创建、编辑、题目关联。
 4. 在线考试：开始考试、提交答卷、自动评分。
 5. 成绩统计：个人成绩与管理端统计数据。
+6. 草稿纸拍照留存：数学/会计/编程等允许纸质草稿的笔试，开考前拍空白页、交卷前拍最终页，漏拍拦截交卷，支持交老师处理与监考回放。
+
+## 草稿纸拍照留存功能
+适用场景：数学、会计、编程等允许学生使用纸质草稿纸的笔试。
+
+- 试卷开关：教师在「试卷管理」创建/编辑试卷时勾选「允许使用纸质草稿纸（拍照留存）」。
+- 开考前门禁：学生开考后、答题前必须先拍摄**空白草稿页**，未拍不能进入答题（计时从拍完后开始）。
+- 交卷前拍照：点「提交答卷」时先引导拍摄**草稿最终页**；两张照片缺一不可，否则后端拦截、无法交卷。
+- 漏拍处理：学生无法拍照时可填写原因「交给监考老师处理」，答卷暂挂（`scratch_pending`），不计分；
+  教师在「草稿监考 → 异常处理」中**放行**（学生可正常交卷计分）或**驳回**（学生补拍后重新交卷）。
+- 监考回放：教师可查看某场考试的草稿照片，以及照片拍摄时间与每题作答时间合并的时间线，便于核对。
+- 照片经鉴权接口访问（接口同时返回 base64 data URI 供页面直接显示），保存在后端 `storage/app/private/scratch-photos/`。
+
+### 数据库升级（已存在的库）
+全新 `docker compose up` 会自动使用最新内嵌表结构。已初始化过的旧库需执行增量脚本：
+
+```bash
+# 方式一：直接执行 SQL
+mysql -h 127.0.0.1 -P 3307 -uroot -proot exam_system < scripts/db/2026_09_scratch_paper.sql
+
+# 方式二：在 backend 容器内执行 Laravel 迁移
+docker compose exec backend php artisan migrate --force
+```
+
+涉及表：`exam_papers` 新增 `allow_scratch_paper`；`exam_records` 新增草稿异常处理字段及 `scratch_pending` 状态；
+`exam_record_answers` 新增 `answered_at`；新增 `exam_scratch_photos` 照片表。
+
 
 ## 角色权限
 | 角色 | 可访问模块 |

@@ -11,7 +11,13 @@
     </div>
     <div v-else class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
       <div v-for="paper in examPapers" :key="paper.id" class="bg-white rounded-lg shadow p-6">
-        <h3 class="text-lg font-semibold text-gray-900 mb-2">{{ paper.title }}</h3>
+        <h3 class="text-lg font-semibold text-gray-900 mb-2">
+          {{ paper.title }}
+          <span
+            v-if="paper.allow_scratch_paper"
+            class="ml-1 align-middle inline-flex items-center px-2 py-0.5 rounded text-xs font-medium bg-amber-100 text-amber-800"
+          >草稿拍照</span>
+        </h3>
         <p class="text-gray-600 text-sm mb-4">{{ paper.description || '暂无描述' }}</p>
         <div class="space-y-2 text-sm text-gray-500">
           <div class="flex justify-between">
